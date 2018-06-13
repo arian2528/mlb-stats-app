@@ -13,6 +13,9 @@ import PlayerStatsGraph from "./components/PlayerStatsGraph";
 import DatePicker from "./components/DatePicker";
 import _ from 'lodash';
 
+import Moment from 'moment';
+import { extendMoment } from 'moment-range';
+
 const API_KEY = "bb2f2c280ad949c4bf3f1c4c6a2d86af";
 const BASE_DOMAIN = `https://api.fantasydata.net/v3/mlb/stats/JSON`;
 const APPAC_HOST = `http://lookup-service-prod.mlb.com/json`;
@@ -56,12 +59,51 @@ class App extends Component {
   //   this.fetchRecords('teams-list')
   // }
 
-  getRecords = async (request) => {
-    //transform requests into Promises, await all
+  getGraphRecords = async () => {
+    // Get Date range
+    const dateRange = this.getDateRange();
+    // Get the promises after fetch
+    const combinedFetch = this.getStatsGraphPromises(dateRange);
 
-    // Get the values of the query for the url to the endpoint
-    const services = this.getService(request);
-    let combinedFetchs = API_USED.map(api => {
+    Promise.all(combinedFetch)
+    .then(data => { 
+      let records = data; console.log(records)
+      // manipulate data
+    })
+    .then( data => { 
+      // display data
+    })
+    .catch(function(error) {
+      console.log('Looks like there was a problem: \n', error);
+    });
+  }
+
+  getDateRange() {
+    // https://stackoverflow.com/questions/4413590/javascript-get-array-of-dates-between-2-dates?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+    const moment = extendMoment(Moment);
+    const range = moment.range(this.state.startDateRange, this.state.endDateRange)
+    return Array.from(range.by('days'))
+  }
+
+  getStatsGraphPromises(dateRange) {
+    let service, myRequest;
+    return dateRange.map(date => {
+      date = Moment(date).format("YYYY-MMM-DD");  
+      service = `/PlayerGameStatsByPlayer/${date}/${this.state.playerid}`;
+      myRequest = this.getRequestHeaders(service,'fantasy');
+      return fetch(myRequest)
+      .then(response => {
+        if (!response.ok) {
+          throw Error(response.statusText);
+        }
+        return response.json()
+      }); 
+    });
+  }
+
+  getPromises(services, request) {
+    
+    return API_USED.map(api => {
       if((request !== 'player-stats' && api.status === 1) || (request === 'player-stats' && api.playerStats === 1)){
         let myRequest = this.getRequestHeaders(services[api.name], api.name)
 
@@ -74,9 +116,15 @@ class App extends Component {
         });
       }
     });
+  }
 
+  getRecords = async (request) => {
+    // Get the values of the query for the url to the endpoint
+    const services = this.getService(request);
+    // Get the fetch promises
+    const combinedFetch = this.getPromises(services,request);
     // https://medium.com/@wisecobbler/using-the-javascript-fetch-api-f92c756340f0
-    Promise.all(combinedFetchs)
+    Promise.all(combinedFetch)
     .then(data => { 
       let records = data; console.log(records)
       let i = 0;
@@ -125,13 +173,7 @@ class App extends Component {
         list = this.getPlayerStats(data,api);
         if(api === 'appac') this.setState({appacPlayerInfo: list})
         if(api === 'fantasy') this.setState({fantasyPlayerInfo : list})
-        break;
-        
-      case 'player-graph-stats':
-        list = this.getPlayerStatsGraph(data,api);
-        if(api === 'appac') this.setState({appacPlayerInfoGraph: list})
-        if(api === 'fantasy') this.setState({fantasyPlayerInfoGraph: list})
-        break;   
+        break;  
   
       default:
         break;
@@ -227,25 +269,6 @@ getPlayerStats(data,api) {
     
     case 'fantasy':
       list = this.getFantasyPlayerStats(data);
-      break;  
-
-    default:
-      break;
-  }
-
-  return list;
-}
-
-getPlayerStatsGraph(data, api) {
-  let list = [];
-  
-  switch (api) {
-    case 'appac':
-      list = this.getAppacPlayerStatsGraph(data);
-      break;
-    
-    case 'fantasy':
-      list = this.getFantasyPlayerStatsGraph(data);
       break;  
 
     default:
@@ -501,8 +524,12 @@ getService(request) {
       serviceFantasy = `/PlayerSeasonStatsByPlayer/${this.state.season}/${this.state.playerid}`;
       serviceAppac = `named.sport_career_hitting.bam?league_list_id='mlb'&game_type='R'&player_id='${this.state.playerid}'`,
       serviceName = 'player-stats';
-      break;  
-
+      break; 
+      
+    case 'player-graph-stats':
+      serviceFantasy = '';  
+      serviceAppac = '';
+      serviceName = request;
     default:
       break;
   }
@@ -579,49 +606,6 @@ orderPlayersByExperience(records) {
 
   return records;
 }
-  
-  // getStats = async (e) => {
-  //   e.preventDefault();
-  //   let firstname = e.target.elements.firstname.value;
-  //   let lastname = e.target.elements.lastname.value;
-  //   let team = e.target.elements.team.value;
-  //   let playerid = 10000022;
-  //   const uri = `https://api.fantasydata.net/v3/mlb/stats/JSON/Player/${playerid}`;
-  //   const myHeaders = new Headers({
-  //     "Ocp-Apim-Subscription-Key" : API_KEY
-  //   });
-    
-  //   const myInit = {  method: 'GET',
-  //                     headers: myHeaders,
-  //                  };
-  //   const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-	//   const myRequest = new Request(uri, myInit);
-  //   const api_call = await fetch(myRequest)
-  //   const data = await api_call.json();
-  //   console.log(data);
-  //   if (firstname && lastname) {
-  //     this.setState({
-  //       // temperature: data.main.temp,
-  //       // city: data.name,
-  //       firstname: "Arian", 
-  //       lastname: "Buzon",
-  //       position: "catcher",
-  //       team: "Boston",
-  //       country: "Cuba",
-  //       error: ""
-  //     });
-  //   }
-  //   // } else {
-  //   //   this.setState({
-  //   //     temperature: undefined,
-  //   //     city: undefined,
-  //   //     country: undefined,
-  //   //     humidity: undefined,
-  //   //     description: undefined,
-  //   //     error: "Please enter the values."
-  //   //   });
-  //   // }
-  // }
 
   selectedTeam = async (e) => {
     e.preventDefault(); 
@@ -642,7 +626,7 @@ orderPlayersByExperience(records) {
   getGraphStats = async (event, picker) => {
     // e.preventDefault();
     this.setState({ startDateRange: picker.startDate._d, endDateRange: picker.endDate._d }, function() {
-      this.getRecords('player-graph-stats')
+      this.getGraphRecords()
     }.bind(this))
   }
 
