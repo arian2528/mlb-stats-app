@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 
+// Loading components
 import Titles from "./components/Titles";
 // import DropDown from "./components/DropDown";
 // import TeamsCarousel from './components/TeamsCarousel';
@@ -11,14 +11,24 @@ import PlayersList from "./components/PlayersList";
 import PlayerStats from "./components/PlayerStats";
 import PlayerStatsGraph from "./components/PlayerStatsGraph";
 import DatePicker from "./components/DatePicker";
-import _ from 'lodash';
 
+// Loading dependencies
+// import _ from 'lodash';
 import Moment from 'moment';
 import { extendMoment } from 'moment-range';
 
-const API_KEY = "bb2f2c280ad949c4bf3f1c4c6a2d86af";
-const BASE_DOMAIN = `https://api.fantasydata.net/v3/mlb/stats/JSON`;
-const APPAC_HOST = `http://lookup-service-prod.mlb.com/json`;
+// Loading classes
+import Players from './classes/Players';
+import Teams from "./classes/Teams";
+
+// Loading modules
+const HeaderData = require('./modules/HeadearsData.js')
+const MatchApi = require('./modules/MatchApis.js');
+
+// Instantiating the class
+const Player = new Players();
+const Team = new Teams();
+
 const API_USED = [{name: 'appac', status: 0, playerStats: 0},{name: 'fantasy', status: 1, playerStats: 1}];
 
 class App extends Component {
@@ -55,10 +65,6 @@ class App extends Component {
     this.getRecords('teams-list')
   }
 
-  // componentWillMount() {
-  //   this.fetchRecords('teams-list')
-  // }
-
   getGraphRecords = async () => {
     // Get Date range
     const dateRange = this.getDateRange();
@@ -80,6 +86,7 @@ class App extends Component {
 
   getDateRange() {
     // https://stackoverflow.com/questions/4413590/javascript-get-array-of-dates-between-2-dates?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
+    // https://momentjs.com/
     const moment = extendMoment(Moment);
     const range = moment.range(this.state.startDateRange, this.state.endDateRange)
     return Array.from(range.by('days'))
@@ -90,7 +97,7 @@ class App extends Component {
     return dateRange.map(date => {
       date = Moment(date).format("YYYY-MMM-DD");  
       service = `/PlayerGameStatsByPlayer/${date}/${this.state.playerid}`;
-      myRequest = this.getRequestHeaders(service,'fantasy');
+      myRequest = HeaderData.getHeaders(service,'fantasy');
       return fetch(myRequest)
       .then(response => {
         if (!response.ok) {
@@ -102,11 +109,10 @@ class App extends Component {
   }
 
   getPromises(services, request) {
-    
+    let myRequest;
     return API_USED.map(api => {
       if((request !== 'player-stats' && api.status === 1) || (request === 'player-stats' && api.playerStats === 1)){
-        let myRequest = this.getRequestHeaders(services[api.name], api.name)
-
+        myRequest = HeaderData.getHeaders(services[api.name], api.name)
         return fetch(myRequest)
           .then(response => {
             if (!response.ok) {
@@ -120,7 +126,7 @@ class App extends Component {
 
   getRecords = async (request) => {
     // Get the values of the query for the url to the endpoint
-    const services = this.getService(request);
+    const services = HeaderData.getService(request,this.state);
     // Get the fetch promises
     const combinedFetch = this.getPromises(services,request);
     // https://medium.com/@wisecobbler/using-the-javascript-fetch-api-f92c756340f0
@@ -145,17 +151,16 @@ class App extends Component {
 
   manipulateRawData(serviceName,data,api) {
     let list = [];
-    const teamApiMatch = this.getTeamApiMatch();
-    
+    const teamApiMatch = MatchApi.apiMatch;
     switch (serviceName) {
       case 'teams':
-        list = this.getTeamList(data,api,teamApiMatch);
+        list = Team.getTeamList(data,api,teamApiMatch);
         if(api === 'appac') this.setState({appacTeamList: list})
         if(api === 'fantasy') this.setState({fantasyTeamList: list})
         break;
   
       case 'players':
-        list = this.getPlayerList(data,api,teamApiMatch);
+        list = Player.getPlayerList(data,api,teamApiMatch);
         if(api === 'appac') this.setState({appacPlayerList: list})
         if(api === 'fantasy') this.setState({fantasyPlayerList: list})
         break;
@@ -183,7 +188,7 @@ class App extends Component {
   }
 
   mergeList = async (request) => {
-    const services = this.getService(request);
+    const services = HeaderData.getService(request,this.state);
     const list = this.getMergedList(services.serviceName);
     this.storeRecordsOnState(services.serviceName,list);
   }
@@ -220,68 +225,33 @@ class App extends Component {
   }
 
 
-getTeamList(data,api,teamApiMatch) {
-  let list = [];
   
-  switch (api) {
-    case 'appac':
-      list = this.getAppacTeamList(data);
-      break;
-    
-    case 'fantasy':
-      list = this.getFantasyTeamList(data,teamApiMatch);
-      break;  
 
-    default:
-      break;
+  
+
+  getPlayerStats(data,api) {
+    let list = [];
+    
+    switch (api) {
+      case 'appac':
+        list = this.getAppacPlayerStats(data);
+        break;
+      
+      case 'fantasy':
+        list = this.getFantasyPlayerStats(data);
+        break;  
+
+      default:
+        break;
+    }
+
+    return list;
   }
 
-  return list;
-}
-
-getPlayerList(data,api,teamApiMatch) {
-  let list = [];
-  
-  switch (api) {
-    case 'appac':
-      list = this.getAppacPlayerList(data);
-      break;
-    
-    case 'fantasy':
-      list = this.getFantasyPlayerList(data,teamApiMatch);
-      list = this.orderPlayersByExperience(list);
-      break;  
-
-    default:
-      break;
-  }
-
-  return list;
-}
-
-getPlayerStats(data,api) {
-  let list = [];
-  
-  switch (api) {
-    case 'appac':
-      list = this.getAppacPlayerStats(data);
-      break;
-    
-    case 'fantasy':
-      list = this.getFantasyPlayerStats(data);
-      break;  
-
-    default:
-      break;
-  }
-
-  return list;
-}
-
-getFantasyPlayerStats(data) { 
-  const playerInfo = this.state.playerList.find(x => x.PlayerID == this.state.playerid);
-  const player = data;
-    
+  getFantasyPlayerStats(data) { 
+    const playerInfo = this.state.playerList.find(x => x.PlayerID == this.state.playerid);
+    const player = data;
+      
     return {
       PlayerID: playerInfo.PlayerID,
       match: playerInfo.FantasyDraftName,
@@ -304,308 +274,28 @@ getFantasyPlayerStats(data) {
       BatHand: playerInfo.BatHand,
       buttonDisabled: playerInfo.disabled,
     } 
-}
-
-getAppacTeamList(records) {
-
-  const fantasyTeamsList = this.state.fantasyTeamList;
-
-  return records.team_all_season.queryResults.row.map(team => { 
-    // https://stackoverflow.com/questions/39235353/es6-find-an-object-in-an-array-by-one-of-its-properties?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-    // To get the logos of the teams from fantasy api
-    let logo = fantasyTeamsList ? fantasyTeamsList.find( x => x.match === team.bis_team_code) : undefined;
-    return { 
-      Id: team.mlb_org_id,  
-      Name: team.name_display_short, 
-      WikipediaLogoUrl: logo != undefined ? logo.WikipediaLogoUrl : '',
-      Key: team.bis_team_code, 
-    } 
-  });
-}
-
-getFantasyTeamList(fantasyTeams,teamApiMatch) {
-  return fantasyTeams.map(team =>{ 
-    // To match values with appac api 
-    let teamApiMatched = teamApiMatch.find( x => x.Key === team.Key);
-    return {
-      Key: team.Key,  
-      match: teamApiMatched !== undefined ? teamApiMatched.Translate : team.Key,
-      WikipediaLogoUrl: team.WikipediaLogoUrl,
-      Name: team.Name,
-      Id : team.TeamID,
-    } 
-  });
-}
-
-getFantasyPlayerList(data,teamApiMatch) {
-  return data.map(player =>{
-    // To match values with appac api 
-    // let teamApiMatched = teamApiMatch.find( x => x.Key === team.Key);
-    let positionPitcher = player.Position;
-    let disabled = positionPitcher === 'RP' || positionPitcher === 'SP' ? true : false
-    return {
-      // Key: teamApiMatched !== undefined ? teamApiMatched.Translate : team.Key,
-      PlayerID: player.PlayerID,
-      match: player.FantasyDraftName,
-      Jersey: player.Jersey,
-      PhotoUrl: player.PhotoUrl,
-      FantasyPId: player.PlayerID,
-      Name: player.name_full, 
-      FirstName: player.FirstName,
-      LastName: player.LastName,
-      Experience: player.Experience,
-      MLBAMID: player.MLBAMID,
-      PositionCategory: player.PositionCategory,
-      Position: player.Position,
-      BatHand: player.BatHand,
-      buttonDisabled: disabled,
-    } 
-  });
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// manipulateData(serviceName, records, serviceFantasy) {
-
-//   let data = [];
-//   data = this.getFantasyDataApi(serviceName, records,serviceFantasy);
-//   console.log(data)
-//   return data;
-
-// }
-
-// getFantasyDataApi = async (serviceName,records,serviceFantasy) => {
-  
-//   const myRequest = this.getRequestHeaders(serviceFantasy,'fantasy');
-//   const teamApiMatch = this.getTeamApiMatch();
-
-//   fetch(myRequest)
-//   .then(response =>{
-//       if (!response.ok) {
-//         throw Error(response.statusText);
-//       }
-//       return response.json()
-//   })
-//   .then(data => {
-    
-//     const mergedList = this.mergeApiResponse(records,data,serviceName);
-    
-//     // const list = this.mergeApiResponse(records,data);
-//     // this.storeRecordsOnState(serviceName,list);
-    
-//     // const devFantasyTeams = data;
-//     // const teamApiMatch = this.getTeamApiMatch();
-//     // let teamLogos = this.getTeamLogosList(devFantasyTeams,teamApiMatch);
-//     // const AppacTeamList = this.getAppacTeamList(records,teamLogos);
-//     // this.setState({teamLogos})
-//     // this.storeRecordsOnState(serviceName,AppacTeamList);
-//   })
-//   .catch(function(error) {
-//     console.log('Looks like there was a problem with the fantasy request data: \n', error);
-//     this.storeRecordsOnState(serviceName,records);
-//   });
-// }
-
-// mergeApiResponse = async (records,data,serviceName) => {
-//   const list = this.getApiMergeResponse(records,data,serviceName)
-//   this.storeRecordsOnState(serviceName,list);
-//   return list;
-// }
-
-// getApiMergeResponse(records,data,serviceName) {
-//   let mergeList = [];
-//   const teamApiMatch = this.getTeamApiMatch();
-  
-//   switch (serviceName) {
-//     case 'teams':
-//       let fantasyTeamList = this.getFantasyTeamList(data,teamApiMatch);
-//       // Using this because of data from fantasy has more info
-//       // In case we want the data from appac, comment this and add back the line after  this.getAppacTeamList()
-//       mergeList = fantasyTeamList;
-      
-//       // mergeList = this.getAppacTeamList(records,fantasyTeamList); // disabled for now, not using appac data
-//       this.setState({fantasyTeamList})
-//       break;
-
-//     case 'players':
-//       let playersPhotos = this.getPlayersFantasyList(data,teamApiMatch);
-      
-//       // Using this because of data from fantasy has more info
-//       // In case we want the data from appac, comment this and add back the line after  this.getAppacPlayerList()
-//       mergeList = playersPhotos;
-//       mergeList = this.orderPlayersByExperience(mergeList);
-      
-//       // mergeList = this.getAppacPlayerList(records,playersPhotos); // disabled for now, not using appac data
-//       break;
-
-//     default:
-//       break;
-//   }
-
-//   return mergeList;
-// }
-
-
-
-getAppacPlayerList(records,playersPhotos) {
-  return records.roster_40.queryResults.row.map(player => { 
-    // https://stackoverflow.com/questions/39235353/es6-find-an-object-in-an-array-by-one-of-its-properties?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-    // To get the photos of the players from fantasy api
-    let photo = playersPhotos ? playersPhotos.find( x => (x.match === player.name_display_first_last || x.Jersey === player.jersey_number)) : undefined;
-    return { 
-      Id: player.player_id,  
-      Name: player.name_full, 
-      FirstName: player.name_first,
-      LastName: player.name_last,
-      PhotoUrl: photo != undefined ? photo.PhotoUrl : '',
-      PlayerID: player.player_id,
-      Jersey: player.jersey_number, 
-    } 
-  });
-}
-
-storeRecordsOnState(serviceName,records) {
-  switch (serviceName) {
-    case 'teams':
-      this.setState({ teamList : records });
-      break;
-    
-    case 'players':
-      this.setState({ playerList : records });
-      break;
-
-    case 'player-stats':
-      this.setState({ playerStats : records })  
-      break;
-
-    default:
-      break;
-  }
-}
-
-getService(request) {
-  
-  let serviceAppac, serviceName, serviceFantasy;
-  
-  switch (request) {
-    case 'teams-list':
-      serviceFantasy = '/teams'; // https://developer.fantasydata.com
-      serviceAppac = `/named.team_all_season.bam?sport_code='mlb'&all_star_sw='N'&sort_order=name_asc&season=${this.state.season}`; // https://appac.github.io/mlb-data-api-docs
-      serviceName = 'teams';
-      break;
-
-    case 'players-list':
-      serviceFantasy = `/Players/${this.state.teamSelectedFantasy}`;
-      serviceAppac = `/named.roster_40.bam?team_id=${this.state.teamSelected}`
-      serviceName = 'players';
-      break;
-    
-    case 'player-stats':
-      serviceFantasy = `/PlayerSeasonStatsByPlayer/${this.state.season}/${this.state.playerid}`;
-      serviceAppac = `named.sport_career_hitting.bam?league_list_id='mlb'&game_type='R'&player_id='${this.state.playerid}'`,
-      serviceName = 'player-stats';
-      break; 
-      
-    case 'player-graph-stats':
-      serviceFantasy = '';  
-      serviceAppac = '';
-      serviceName = request;
-    default:
-      break;
   }
 
-  return {
-    serviceName: serviceName,
-    appac: serviceAppac,
-    fantasy: serviceFantasy 
-  }; 
-}
-
-getRequestHeaders(service, api) {
-  // const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
   
-  let uri, myInit
 
-  if(api === 'appac'){
-    // For appac data
-    uri = APPAC_HOST + service;
-    myInit = {method: 'GET',};
+  storeRecordsOnState(serviceName,records) {
+    switch (serviceName) {
+      case 'teams':
+        this.setState({ teamList : records });
+        break;
+      
+      case 'players':
+        this.setState({ playerList : records });
+        break;
+
+      case 'player-stats':
+        this.setState({ playerStats : records })  
+        break;
+
+      default:
+        break;
+    }
   }
-
-  if(api === 'fantasy'){
-    uri = BASE_DOMAIN + service;
-    const myHeaders = new Headers({
-      "Ocp-Apim-Subscription-Key" : API_KEY
-    });
-    myInit = { method: 'GET', headers: myHeaders, };
-  }
-
-  return new Request(uri, myInit);
-}
-
-getTeamApiMatch() {
-  return [
-    {
-      Key: 'CHW',
-      Translate: 'CWS'    
-    },
-    {
-      Key: 'CHC',
-      Translate: 'CHI'    
-    },
-    {
-      Key: 'LAA',
-      Translate: 'CAL'    
-    },
-    {
-      Key: 'LAD',
-      Translate: 'LA'    
-    },
-    {
-      Key: 'MIA',
-      Translate: 'FLA'    
-    },
-    {
-      Key: 'NYM',
-      Translate: 'NY'    
-    },
-    {
-      Key: 'WSH',
-      Translate: 'MON'    
-    },
-  ];
-}
-
-orderPlayersByExperience(records) {
-  // https://www.sitepoint.com/sort-an-array-of-objects-in-javascript/
-  records.forEach( player => {
-    player.Experience = player.Experience ? parseInt(player.Experience) : 0;
-  });
-  // https://stackoverflow.com/questions/28853686/sort-array-by-attribute?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-  records.sort((a, b) => parseInt(b.Experience) - parseInt(a.Experience))
-
-  return records;
-}
 
   selectedTeam = async (e) => {
     e.preventDefault(); 
@@ -628,6 +318,10 @@ orderPlayersByExperience(records) {
     this.setState({ startDateRange: picker.startDate._d, endDateRange: picker.endDate._d }, function() {
       this.getGraphRecords()
     }.bind(this))
+  }
+
+  showComponent() {
+    return false;
   }
 
   render() {
@@ -654,10 +348,13 @@ orderPlayersByExperience(records) {
                   </div>
                 </div>
                 <div className="col-xs-6 form-container">
+                  
                   <PlayerStats playerInfo={this.state.playerStats} />
                   <div className="col-xs-5 SeasonStatsTitle"><h4>Season stats by date</h4></div>
                   <div className="col-xs-7 datePicker"><DatePicker startDate={this.state.startDateRange} endDate={this.state.endDateRange} dateRange={this.getGraphStats}/></div>
+                   {/* this.showComponent() &&  */  // If statement inline
                   <PlayerStatsGraph playerStatsGraph={this.state.playerStatsGraph} />
+                  }
                 </div>
               </div>
             </div>
