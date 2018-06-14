@@ -19,33 +19,7 @@ import Moment from 'react-moment';
 import 'moment-timezone';
 
 // Doc: https://www.npmjs.com/package/react-icons
-import * as FontAwesome from 'react-icons/lib/fa'
-
-// class DatePicker extends Component {
-// 	handleSelect(ranges){
-// 		console.log(ranges);
-// 		// {
-// 		// 	selection: {
-// 		// 		startDate: [native Date Object],
-// 		// 		endDate: [native Date Object],
-// 		// 	}
-// 		// }
-// 	}
-// 	render(){
-// 		const selectionRange = {
-// 			startDate: new Date(),
-// 			endDate: new Date(),
-// 			key: 'selection',
-// 		}
-// 		return (
-// 			<DateRangePicker
-// 				ranges={[selectionRange]}
-// 				onChange={this.handleSelect}
-// 			/>
-// 		)
-// 	}
-// }
-// export default DatePicker;
+import * as FontAwesome from 'react-icons/lib/fa';
 
 class DatePicker extends Component {
 
@@ -66,6 +40,7 @@ class DatePicker extends Component {
         this.setState({ startDateMoment: nextProps.startDate, endDateMoment: nextProps.endDate });  
     }
 
+    // You can check values here. But I am passing values to the higher component
     // handleEvent(event, picker) {
     //     console.log(picker.startDate);
     //     console.log(picker.endDate);
