@@ -1,5 +1,3 @@
-
-
 class Players {
     orderPlayersByExperience(records) {
         // https://www.sitepoint.com/sort-an-array-of-objects-in-javascript/

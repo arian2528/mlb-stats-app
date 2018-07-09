@@ -3,7 +3,6 @@ import './App.css';
 
 // Loading components
 import Titles from "./components/Titles";
-// import DropDown from "./components/DropDown";
 // import TeamsCarousel from './components/TeamsCarousel';
 // import SearchTeam from './components/SearchTeam';
 import TeamList from './components/TeamList';
@@ -326,7 +325,8 @@ class App extends Component {
 
   render() {
     return (
-      <div>
+      <Provider store={store}>
+      
         <div className="wrapper">
           <div className="main">
             <div className="container">
@@ -334,10 +334,6 @@ class App extends Component {
                 <div className="col-xs-6">
                   <div className=""><Titles /></div>
                   <br/>
-                  {/* <p><h5>Select team</h5></p> */}
-                  {/* <div className="row"><DropDown selectedTeam={this.selectedTeam.bind(this)} /></div> */}
-                  {/* <div className="row"><DropDown /></div> */}
-                  {/* <div className=""><TeamsCarousel selectedTeam={this.selectedTeam.bind(this)} /></div> */}
                   <div>
                     <div className="col-xs-4">
                       <TeamList teamList={this.state.teamList} teamSelect={this.selectedTeam} />
@@ -359,8 +355,8 @@ class App extends Component {
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        </div>  
+      </Provider>  
     );
   }
 }

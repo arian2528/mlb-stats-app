@@ -177,7 +177,7 @@ button:active {
 .players {
   overflow-y: scroll;
   overflow-x: hidden;
-  height: 70vh;
+  height: 55vh;
 }
 
 #ProfilePage
@@ -285,4 +285,8 @@ button:active {
 
 .SeasonStatsTitle {
   color: white
+}
+
+.PlayerStatsGraph {
+  height: 50vh
 }

@@ -1,0 +1,7 @@
+export const FETCH_TEAMS = 'FETCH_TEAMS';
+export const FETCH_PLAYERS = 'FETCH_PLAYERS';
+export const FETCH_STATS = 'FETCH_STATS';
+export const SELECT_TEAM = 'SELECT_TEAM';
+export const SELECT_PLAYER = 'SELECT_PLAYER';
+export const SELECT_RANGE_DATES = 'SELECT_RANGE_DATES';
+export const GRAPH_STATS = 'GRAPH_STATS';
